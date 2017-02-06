@@ -3,7 +3,7 @@
 import FWCore.ParameterSet.Config as cms
 
 
-process.ttHFGenFilter = cms.EDFilter("ttHFGenFilter",
+ttHFGenFilter = cms.EDFilter("ttHFGenFilter",
     genBHadFlavour            = cms.InputTag("matchGenBHadron", "genBHadFlavour"),
     genBHadFromTopWeakDecay   = cms.InputTag("matchGenBHadron", "genBHadFromTopWeakDecay"),
     genBHadPlusMothers        = cms.InputTag("matchGenBHadron", "genBHadPlusMothers"),
