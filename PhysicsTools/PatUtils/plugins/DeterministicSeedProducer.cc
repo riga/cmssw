@@ -51,9 +51,8 @@ uint32_t transformSeed(uint32_t seed)
     }
 
     // create the sha1 hash
-    size_t length = sizeof(c);
     unsigned char hash[SHA_DIGEST_LENGTH];
-    SHA1(c, length, hash);
+    SHA1(c, sizeof(c), hash);
 
     // transform the hash into a hex string
     std::stringstream ss;
@@ -282,7 +281,28 @@ uint32_t DeterministicSeedProducer::createElectronSeed(edm::Event& iEvent, const
 
 uint32_t DeterministicSeedProducer::createMuonSeed(edm::Event& iEvent, const pat::Muon& muon)
 {
-    return 1;
+    uint32_t seed = 0;
+
+    // event number
+    seed += 83987 * iEvent.id().event();
+
+    // number of hits, chambers, matches and station gap distance
+    seed += 7537 * muon.numberOfValidHits();
+    seed += muon.numberOfChambers() * muon.stationGapMaskDistance();
+    seed += muon.numberOfMatches() << 8;
+
+    // track information
+    uint32_t tWM = 1;
+    const auto& trackRef = muon.track();
+    if (!trackRef.isNull()) tWM = trackRef.get()->hitPattern().trackerLayersWithMeasurement();
+    seed += 17 * tWM;
+
+    uint32_t vPH = 1;
+    const auto& innerTrackRef = muon.innerTrack();
+    if (!innerTrackRef.isNull()) vPH = innerTrackRef.get()->hitPattern().numberOfValidPixelHits();
+    seed += vPH;
+
+    return seed;
 }
 
 uint32_t DeterministicSeedProducer::createTauSeed(edm::Event& iEvent, const pat::Tau& tau)
