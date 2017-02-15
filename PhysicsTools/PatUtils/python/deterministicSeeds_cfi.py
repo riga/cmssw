@@ -4,7 +4,7 @@ import FWCore.ParameterSet.Config as cms
 
 
 deterministicSeeds = cms.EDProducer("DeterministicSeedProducer",
-    produceCollections = cms.bool(True),
+    produceCollections = cms.bool(False),
     produceValueMaps   = cms.bool(True),
     electronCollection = cms.InputTag("slimmedElectrons"),
     electronSeedName   = cms.string("electronDeterministicSeed"),
