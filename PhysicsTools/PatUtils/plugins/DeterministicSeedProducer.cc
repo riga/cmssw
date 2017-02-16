@@ -30,14 +30,13 @@
 #include "FWCore/Utilities/interface/StreamID.h"
 
 #include "DataFormats/PatCandidates/interface/Electron.h"
-#include "DataFormats/EcalDetId/interface/EBDetId.h"
-#include "DataFormats/EcalDetId/interface/EEDetId.h"
-
 #include "DataFormats/PatCandidates/interface/Muon.h"
 #include "DataFormats/PatCandidates/interface/Tau.h"
 #include "DataFormats/PatCandidates/interface/Photon.h"
 #include "DataFormats/PatCandidates/interface/Jet.h"
 #include "DataFormats/PatCandidates/interface/MET.h"
+#include "DataFormats/EcalDetId/interface/EBDetId.h"
+#include "DataFormats/EcalDetId/interface/EEDetId.h"
 
 // only for debugging
 #include <TRandom.h>
@@ -86,14 +85,14 @@ public:
 
     template <typename T>
     void createSeeds(edm::Event& iEvent, edm::EDGetTokenT<std::vector<T> >& token,
-        std::string& seedName, uint32_t (*seedFunc)(edm::Event&, const T&));
+        std::string& seedName, int factor, uint32_t (*seedFunc)(edm::Event&, const T&, int));
 
-    static uint32_t createElectronSeed(edm::Event& iEvent, const pat::Electron& electron);
-    static uint32_t createMuonSeed(edm::Event& iEvent, const pat::Muon& muon);
-    static uint32_t createTauSeed(edm::Event& iEvent, const pat::Tau& tau);
-    static uint32_t createPhotonSeed(edm::Event& iEvent, const pat::Photon& photon);
-    static uint32_t createJetSeed(edm::Event& iEvent, const pat::Jet& jet);
-    static uint32_t createMETSeed(edm::Event& iEvent, const pat::MET& MET);
+    static uint32_t createElectronSeed(edm::Event& iEvent, const pat::Electron& electron, int factor);
+    static uint32_t createMuonSeed(edm::Event& iEvent, const pat::Muon& muon, int factor);
+    static uint32_t createTauSeed(edm::Event& iEvent, const pat::Tau& tau, int factor);
+    static uint32_t createPhotonSeed(edm::Event& iEvent, const pat::Photon& photon, int factor);
+    static uint32_t createJetSeed(edm::Event& iEvent, const pat::Jet& jet, int factor);
+    static uint32_t createMETSeed(edm::Event& iEvent, const pat::MET& MET, int factor);
 
     void createDebugHists(std::string& seedName);
     void writeDebugHists(std::map<std::string, TH1F*>& hists);
@@ -107,26 +106,32 @@ private:
 
     edm::InputTag electronCollection_;
     std::string electronSeedName_;
+    int electronSeedFactor_;
     edm::EDGetTokenT<std::vector<pat::Electron> > electronToken_;
 
     edm::InputTag muonCollection_;
     std::string muonSeedName_;
+    int muonSeedFactor_;
     edm::EDGetTokenT<std::vector<pat::Muon> > muonToken_;
 
     edm::InputTag tauCollection_;
     std::string tauSeedName_;
+    int tauSeedFactor_;
     edm::EDGetTokenT<std::vector<pat::Tau> > tauToken_;
 
     edm::InputTag photonCollection_;
     std::string photonSeedName_;
+    int photonSeedFactor_;
     edm::EDGetTokenT<std::vector<pat::Photon> > photonToken_;
 
     edm::InputTag jetCollection_;
     std::string jetSeedName_;
+    int jetSeedFactor_;
     edm::EDGetTokenT<std::vector<pat::Jet> > jetToken_;
 
     edm::InputTag METCollection_;
     std::string METSeedName_;
+    int METSeedFactor_;
     edm::EDGetTokenT<std::vector<pat::MET> > METToken_;
 
     bool debug_;
@@ -142,16 +147,22 @@ DeterministicSeedProducer::DeterministicSeedProducer(const edm::ParameterSet& iC
     , produceValueMaps_(iConfig.getParameter<bool>("produceValueMaps"))
     , electronCollection_(iConfig.getParameter<edm::InputTag>("electronCollection"))
     , electronSeedName_(iConfig.getParameter<std::string>("electronSeedName"))
+    , electronSeedFactor_(iConfig.getParameter<int>("electronSeedFactor"))
     , muonCollection_(iConfig.getParameter<edm::InputTag>("muonCollection"))
     , muonSeedName_(iConfig.getParameter<std::string>("muonSeedName"))
+    , muonSeedFactor_(iConfig.getParameter<int>("muonSeedFactor"))
     , tauCollection_(iConfig.getParameter<edm::InputTag>("tauCollection"))
     , tauSeedName_(iConfig.getParameter<std::string>("tauSeedName"))
+    , tauSeedFactor_(iConfig.getParameter<int>("tauSeedFactor"))
     , photonCollection_(iConfig.getParameter<edm::InputTag>("photonCollection"))
     , photonSeedName_(iConfig.getParameter<std::string>("photonSeedName"))
+    , photonSeedFactor_(iConfig.getParameter<int>("photonSeedFactor"))
     , jetCollection_(iConfig.getParameter<edm::InputTag>("jetCollection"))
     , jetSeedName_(iConfig.getParameter<std::string>("jetSeedName"))
+    , jetSeedFactor_(iConfig.getParameter<int>("jetSeedFactor"))
     , METCollection_(iConfig.getParameter<edm::InputTag>("METCollection"))
     , METSeedName_(iConfig.getParameter<std::string>("METSeedName"))
+    , METSeedFactor_(iConfig.getParameter<int>("METSeedFactor"))
     , debug_(iConfig.getUntrackedParameter<bool>("debug"))
     , randomGen_(0)
     , tfile_(0)
@@ -223,40 +234,40 @@ void DeterministicSeedProducer::produce(edm::Event& iEvent, const edm::EventSetu
 
     if (!electronCollection_.label().empty())
     {
-        createSeeds<pat::Electron>(iEvent, electronToken_, electronSeedName_,
+        createSeeds<pat::Electron>(iEvent, electronToken_, electronSeedName_, electronSeedFactor_,
             &DeterministicSeedProducer::createElectronSeed);
     }
     if (!muonCollection_.label().empty())
     {
-        createSeeds<pat::Muon>(iEvent, muonToken_, muonSeedName_,
+        createSeeds<pat::Muon>(iEvent, muonToken_, muonSeedName_, muonSeedFactor_,
             &DeterministicSeedProducer::createMuonSeed);
     }
     if (!tauCollection_.label().empty())
     {
-        createSeeds<pat::Tau>(iEvent, tauToken_, tauSeedName_,
+        createSeeds<pat::Tau>(iEvent, tauToken_, tauSeedName_, tauSeedFactor_,
             &DeterministicSeedProducer::createTauSeed);
     }
     if (!photonCollection_.label().empty())
     {
-        createSeeds<pat::Photon>(iEvent, photonToken_, photonSeedName_,
+        createSeeds<pat::Photon>(iEvent, photonToken_, photonSeedName_, photonSeedFactor_,
             &DeterministicSeedProducer::createPhotonSeed);
     }
     if (!jetCollection_.label().empty())
     {
-        createSeeds<pat::Jet>(iEvent, jetToken_, jetSeedName_,
+        createSeeds<pat::Jet>(iEvent, jetToken_, jetSeedName_, jetSeedFactor_,
             &DeterministicSeedProducer::createJetSeed);
     }
     if (!METCollection_.label().empty())
     {
-        createSeeds<pat::MET>(iEvent, METToken_, METSeedName_,
+        createSeeds<pat::MET>(iEvent, METToken_, METSeedName_, METSeedFactor_,
             &DeterministicSeedProducer::createMETSeed);
     }
 }
 
 template <typename T>
 void DeterministicSeedProducer::createSeeds(edm::Event& iEvent,
-    edm::EDGetTokenT<std::vector<T> >& token, std::string& seedName,
-    uint32_t (*seedFunc)(edm::Event&, const T&))
+    edm::EDGetTokenT<std::vector<T> >& token, std::string& seedName, int factor,
+    uint32_t (*seedFunc)(edm::Event&, const T&, int))
 {
     edm::Handle<std::vector<T> > handle;
     iEvent.getByToken(token, handle);
@@ -264,7 +275,7 @@ void DeterministicSeedProducer::createSeeds(edm::Event& iEvent,
     std::vector<uint32_t> seeds;
     for (const T& obj : *handle)
     {
-        uint32_t seed = transformSeed(seedFunc(iEvent, obj));
+        uint32_t seed = transformSeed(seedFunc(iEvent, obj, factor));
         seeds.push_back(seed);
     }
 
@@ -300,7 +311,8 @@ void DeterministicSeedProducer::createSeeds(edm::Event& iEvent,
     }
 }
 
-uint32_t DeterministicSeedProducer::createElectronSeed(edm::Event& iEvent, const pat::Electron& electron)
+uint32_t DeterministicSeedProducer::createElectronSeed(edm::Event& iEvent,
+    const pat::Electron& electron, int factor)
 {
     uint32_t seed = 0;
 
@@ -335,10 +347,14 @@ uint32_t DeterministicSeedProducer::createElectronSeed(edm::Event& iEvent, const
     // number of valid pixel hits
     seed += hitPattern.numberOfValidPixelHits();
 
+    // apply the additional factor
+    seed *= factor;
+
     return seed;
 }
 
-uint32_t DeterministicSeedProducer::createMuonSeed(edm::Event& iEvent, const pat::Muon& muon)
+uint32_t DeterministicSeedProducer::createMuonSeed(edm::Event& iEvent, const pat::Muon& muon,
+    int factor)
 {
     uint32_t seed = 0;
 
@@ -366,11 +382,15 @@ uint32_t DeterministicSeedProducer::createMuonSeed(edm::Event& iEvent, const pat
         vph = innerTrackRef.get()->hitPattern().numberOfValidPixelHits();
     }
     seed += vph;
+
+    // apply the additional factor
+    seed *= factor;
  
     return seed;
 }
 
-uint32_t DeterministicSeedProducer::createTauSeed(edm::Event& iEvent, const pat::Tau& tau)
+uint32_t DeterministicSeedProducer::createTauSeed(edm::Event& iEvent, const pat::Tau& tau,
+    int factor)
 {
     uint32_t seed = 0;
 
@@ -396,10 +416,14 @@ uint32_t DeterministicSeedProducer::createTauSeed(edm::Event& iEvent, const pat:
     // decay mode
     seed += 5 * tau.decayMode();
 
+    // apply the additional factor
+    seed *= factor;
+
     return seed;
 }
 
-uint32_t DeterministicSeedProducer::createPhotonSeed(edm::Event& iEvent, const pat::Photon& photon)
+uint32_t DeterministicSeedProducer::createPhotonSeed(edm::Event& iEvent, const pat::Photon& photon,
+    int factor)
 {
     uint32_t seed = 0;
 
@@ -432,10 +456,14 @@ uint32_t DeterministicSeedProducer::createPhotonSeed(edm::Event& iEvent, const p
     seed += 13 * photon.nTrkHollowConeDR03();
     seed += photon.nTrkSolidConeDR04();
 
+    // apply the additional factor
+    seed *= factor;
+
     return seed;
 }
 
-uint32_t DeterministicSeedProducer::createJetSeed(edm::Event& iEvent, const pat::Jet& jet)
+uint32_t DeterministicSeedProducer::createJetSeed(edm::Event& iEvent, const pat::Jet& jet,
+    int factor)
 {
     uint32_t seed = 0;
 
@@ -448,10 +476,14 @@ uint32_t DeterministicSeedProducer::createJetSeed(edm::Event& iEvent, const pat:
     seed += (431 * jet.n60()) << 6;
     seed += 3 * jet.photonMultiplicity();
 
+    // apply the additional factor
+    seed *= factor;
+
     return seed;
 }
 
-uint32_t DeterministicSeedProducer::createMETSeed(edm::Event& iEvent, const pat::MET& MET)
+uint32_t DeterministicSeedProducer::createMETSeed(edm::Event& iEvent, const pat::MET& MET,
+    int factor)
 {
     uint32_t seed = 0;
 
@@ -463,14 +495,20 @@ uint32_t DeterministicSeedProducer::createMETSeed(edm::Event& iEvent, const pat:
     seed += int(MET.isPFMET()) << 2;
     seed += int(MET.isRecoMET()) << 1;
 
+    // apply the additional factor
+    seed *= factor;
+
     return seed;
 }
 
 void DeterministicSeedProducer::createDebugHists(std::string& seedName)
 {
-    seedHists_[seedName] = new TH1F(("h_seed_" + seedName).c_str(), ";Seed;Normalized entries", 50, 0, (uint32_t)-1);
-    gausHists_[seedName] = new TH1F(("h_gaus_" + seedName).c_str(), ";Gaus;Normalized entries", 50, -5, 5);
-    uniHists_[seedName] = new TH1F(("h_uni_" + seedName).c_str(), ";Uniform;Normalized entries", 50, 0, 1);
+    seedHists_[seedName] = new TH1F(("h_seed_" + seedName).c_str(), ";Seed;Normalized entries",
+        50, 0, (uint32_t)-1);
+    gausHists_[seedName] = new TH1F(("h_gaus_" + seedName).c_str(), ";Gaus;Normalized entries",
+        50, -5, 5);
+    uniHists_[seedName] = new TH1F(("h_uni_" + seedName).c_str(), ";Uniform;Normalized entries",
+        50, 0, 1);
 }
 
 void DeterministicSeedProducer::writeDebugHists(std::map<std::string, TH1F*>& hists)
