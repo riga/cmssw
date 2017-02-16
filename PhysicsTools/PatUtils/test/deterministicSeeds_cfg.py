@@ -31,7 +31,8 @@ process.deterministicSeeds = cms.EDProducer("DeterministicSeedProducer",
     jetCollection      = cms.InputTag("slimmedJets"),
     jetSeedName        = cms.string("jetDeterministicSeed"),
     METCollection      = cms.InputTag("slimmedMETs"),
-    METSeedName        = cms.string("METDeterministicSeed")
+    METSeedName        = cms.string("METDeterministicSeed"),
+    debug              = cms.untracked.bool(True)
 )
 
 process.out = cms.OutputModule("PoolOutputModule",

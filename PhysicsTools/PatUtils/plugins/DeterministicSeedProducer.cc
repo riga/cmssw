@@ -14,7 +14,7 @@
 //     representation of that hash is truncated at 8 characters whereas the maximum value 'ffffffff'
 //     corresponds to the maximum value a uint32_t can hold.
 //
-// Original Author:  Marcel Rieger
+// Original Author:  Marcel Rieger, Johannes Hauk
 //         Created:  Wed, 15 Feb 2017 16:26:16 GMT
 //
 
@@ -39,6 +39,11 @@
 #include "DataFormats/PatCandidates/interface/Jet.h"
 #include "DataFormats/PatCandidates/interface/MET.h"
 
+// only for debugging
+#include <TRandom.h>
+#include <TRandom3.h>
+#include <TFile.h>
+#include <TH1F.h>
 
 uint32_t transformSeed(uint32_t seed)
 {
@@ -81,7 +86,7 @@ public:
 
     template <typename T>
     void createSeeds(edm::Event& iEvent, edm::EDGetTokenT<std::vector<T> >& token,
-        std::string& seedName, uint32_t (*seedFunc)(edm::Event&, const T&)) const;
+        std::string& seedName, uint32_t (*seedFunc)(edm::Event&, const T&));
 
     static uint32_t createElectronSeed(edm::Event& iEvent, const pat::Electron& electron);
     static uint32_t createMuonSeed(edm::Event& iEvent, const pat::Muon& muon);
@@ -89,6 +94,10 @@ public:
     static uint32_t createPhotonSeed(edm::Event& iEvent, const pat::Photon& photon);
     static uint32_t createJetSeed(edm::Event& iEvent, const pat::Jet& jet);
     static uint32_t createMETSeed(edm::Event& iEvent, const pat::MET& MET);
+
+    void createDebugHists(std::string& seedName);
+    void writeDebugHists(std::map<std::string, TH1F*>& hists);
+    void deleteDebugHists(std::map<std::string, TH1F*>& hists);
 
 private:
     virtual void produce(edm::Event&, const edm::EventSetup&) override;
@@ -119,6 +128,13 @@ private:
     edm::InputTag METCollection_;
     std::string METSeedName_;
     edm::EDGetTokenT<std::vector<pat::MET> > METToken_;
+
+    bool debug_;
+    TRandom* randomGen_;
+    TFile* tfile_;
+    std::map<std::string, TH1F*> seedHists_;
+    std::map<std::string, TH1F*> gausHists_;
+    std::map<std::string, TH1F*> uniHists_;
 };
 
 DeterministicSeedProducer::DeterministicSeedProducer(const edm::ParameterSet& iConfig)
@@ -136,6 +152,9 @@ DeterministicSeedProducer::DeterministicSeedProducer(const edm::ParameterSet& iC
     , jetSeedName_(iConfig.getParameter<std::string>("jetSeedName"))
     , METCollection_(iConfig.getParameter<edm::InputTag>("METCollection"))
     , METSeedName_(iConfig.getParameter<std::string>("METSeedName"))
+    , debug_(iConfig.getUntrackedParameter<bool>("debug"))
+    , randomGen_(0)
+    , tfile_(0)
 {
     setupProducts<pat::Electron>(electronCollection_, electronToken_, electronSeedName_);
     setupProducts<pat::Muon>(muonCollection_, muonToken_, muonSeedName_);
@@ -143,10 +162,38 @@ DeterministicSeedProducer::DeterministicSeedProducer(const edm::ParameterSet& iC
     setupProducts<pat::Photon>(photonCollection_, photonToken_, photonSeedName_);
     setupProducts<pat::Jet>(jetCollection_, jetToken_, jetSeedName_);
     setupProducts<pat::MET>(METCollection_, METToken_, METSeedName_);
+
+    if (debug_)
+    {
+        randomGen_ = new TRandom3();
+        tfile_ = new TFile("deterministicSeedValidation.root", "RECREATE");
+        createDebugHists(electronSeedName_);
+        createDebugHists(muonSeedName_);
+        createDebugHists(tauSeedName_);
+        createDebugHists(photonSeedName_);
+        createDebugHists(jetSeedName_);
+        createDebugHists(METSeedName_);
+    }
 }
 
 DeterministicSeedProducer::~DeterministicSeedProducer()
 {
+    if (randomGen_)
+    {
+        randomGen_->Delete();
+    }
+
+    if (tfile_)
+    {
+        writeDebugHists(seedHists_);
+        writeDebugHists(gausHists_);
+        writeDebugHists(uniHists_);
+        tfile_->Close();
+        deleteDebugHists(seedHists_);
+        deleteDebugHists(gausHists_);
+        deleteDebugHists(uniHists_);
+        delete tfile_;
+    }
 }
 
 template <typename T>
@@ -169,7 +216,7 @@ void DeterministicSeedProducer::setupProducts(edm::InputTag& collection,
 
 void DeterministicSeedProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 {
-    if (!produceCollections_ && !produceValueMaps_)
+    if (!produceCollections_ && !produceValueMaps_ && !debug_)
     {
         return;
     }
@@ -209,7 +256,7 @@ void DeterministicSeedProducer::produce(edm::Event& iEvent, const edm::EventSetu
 template <typename T>
 void DeterministicSeedProducer::createSeeds(edm::Event& iEvent,
     edm::EDGetTokenT<std::vector<T> >& token, std::string& seedName,
-    uint32_t (*seedFunc)(edm::Event&, const T&)) const
+    uint32_t (*seedFunc)(edm::Event&, const T&))
 {
     edm::Handle<std::vector<T> > handle;
     iEvent.getByToken(token, handle);
@@ -238,6 +285,18 @@ void DeterministicSeedProducer::createSeeds(edm::Event& iEvent,
         filler.insert(handle, seeds.begin(), seeds.end());
         filler.fill();
         iEvent.put(out, seedName);
+    }
+
+    if (debug_)
+    {
+        for (size_t i = 0; i < seeds.size(); i++)
+        {
+            seedHists_[seedName]->Fill(seeds[i]);
+            randomGen_->SetSeed(seeds[i]);
+            gausHists_[seedName]->Fill(randomGen_->Gaus());
+            randomGen_->SetSeed(seeds[i]);
+            uniHists_[seedName]->Fill(randomGen_->Rndm());
+        }
     }
 }
 
@@ -301,7 +360,7 @@ uint32_t DeterministicSeedProducer::createMuonSeed(edm::Event& iEvent, const pat
     const auto& innerTrackRef = muon.innerTrack();
     if (!innerTrackRef.isNull()) vPH = innerTrackRef.get()->hitPattern().numberOfValidPixelHits();
     seed += vPH;
-
+ 
     return seed;
 }
 
@@ -323,6 +382,33 @@ uint32_t DeterministicSeedProducer::createJetSeed(edm::Event& iEvent, const pat:
 uint32_t DeterministicSeedProducer::createMETSeed(edm::Event& iEvent, const pat::MET& MET)
 {
     return 1;
+}
+
+
+void DeterministicSeedProducer::createDebugHists(std::string& seedName)
+{
+    seedHists_[seedName] = new TH1F(("h_seed_" + seedName).c_str(), ";Seed;Normalized entries", 50, 0, (uint32_t)-1);
+    gausHists_[seedName] = new TH1F(("h_gaus_" + seedName).c_str(), ";Gaus;Normalized entries", 50, -5, 5);
+    uniHists_[seedName] = new TH1F(("h_uni_" + seedName).c_str(), ";Uniform;Normalized entries", 50, 0, 1);
+}
+
+void DeterministicSeedProducer::writeDebugHists(std::map<std::string, TH1F*>& hists)
+{
+    std::map<std::string, TH1F*>::const_iterator it;
+    for (it = hists.begin(); it != hists.end(); it++)
+    {
+        tfile_->cd();
+        it->second->Write();
+    }
+}
+
+void DeterministicSeedProducer::deleteDebugHists(std::map<std::string, TH1F*>& hists)
+{
+    std::map<std::string, TH1F*>::iterator it;
+    for (it = hists.begin(); it != hists.end(); it++)
+    {
+        delete it->second;
+    }
 }
 
 DEFINE_FWK_MODULE(DeterministicSeedProducer);
