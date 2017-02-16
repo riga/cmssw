@@ -69,7 +69,7 @@ uint32_t transformSeed(uint32_t seed)
 
     // convert the first 8 characters to 4-bytes int with base 16
     // ffffffff equals the max unsigned int so no need for modulo
-    uint32_t transformedSeed = strtoul(hex.substr(0, 8).c_str(), NULL, 16);
+    uint32_t transformedSeed = strtoul(hex.substr(1, 9).c_str(), NULL, 16);
 
     return transformedSeed;
 }
@@ -351,39 +351,116 @@ uint32_t DeterministicSeedProducer::createMuonSeed(edm::Event& iEvent, const pat
     seed += muon.numberOfMatches() << 8;
 
     // track information
-    uint32_t tWM = 1;
+    uint32_t twm = 1;
     const auto& trackRef = muon.track();
-    if (!trackRef.isNull()) tWM = trackRef.get()->hitPattern().trackerLayersWithMeasurement();
-    seed += 17 * tWM;
+    if (!trackRef.isNull())
+    {
+        twm = trackRef.get()->hitPattern().trackerLayersWithMeasurement();
+    }
+    seed += 17 * twm;
 
-    uint32_t vPH = 1;
+    uint32_t vph = 1;
     const auto& innerTrackRef = muon.innerTrack();
-    if (!innerTrackRef.isNull()) vPH = innerTrackRef.get()->hitPattern().numberOfValidPixelHits();
-    seed += vPH;
+    if (!innerTrackRef.isNull())
+    {
+        vph = innerTrackRef.get()->hitPattern().numberOfValidPixelHits();
+    }
+    seed += vph;
  
     return seed;
 }
 
 uint32_t DeterministicSeedProducer::createTauSeed(edm::Event& iEvent, const pat::Tau& tau)
 {
-    return 1;
+    uint32_t seed = 0;
+
+    // event number
+    seed += 13933 * iEvent.id().event();
+
+    // number of candidates
+    seed += 7669 * tau.isolationCands().size();
+    seed += (269 * tau.signalCands().size()) << 5;
+
+    // lead track info
+    uint32_t rhs = 1;
+    uint32_t idi = 1;
+    const auto& leadTrackRef = tau.leadTrack();
+    if (!leadTrackRef.isNull())
+    {
+        rhs = leadTrackRef.get()->recHitsSize();
+        idi = leadTrackRef.get()->innerDetId();
+    }
+    seed += 281 * rhs;
+    seed += 47 * idi;
+
+    // decay mode
+    seed += 5 * tau.decayMode();
+
+    return seed;
 }
 
 uint32_t DeterministicSeedProducer::createPhotonSeed(edm::Event& iEvent, const pat::Photon& photon)
 {
-    return 1;
+    uint32_t seed = 0;
+
+    // event number
+    seed += 13933 * iEvent.id().event();
+
+    // ieta/ix and iphi/iy of super cluster seed
+    int i1(1);
+    int i2(1);
+    const reco::SuperClusterRef& superCluster = photon.superCluster();
+    const reco::CaloClusterPtr& seedCaloCluster = superCluster->seed();
+    const DetId& detId = seedCaloCluster->seed();
+    if (detId.subdetId() == EcalSubdetector::EcalBarrel)
+    {
+        const EBDetId ebDetId = EBDetId(detId.rawId());
+        i1 = ebDetId.ieta();
+        i2 = ebDetId.iphi();
+    }
+    else if (detId.subdetId() == EcalSubdetector::EcalEndcap)
+    {
+        const EEDetId eeDetId = EEDetId(detId.rawId());
+        i1 = eeDetId.ix();
+        i2 = eeDetId.iy();
+    }
+    seed += 401 * i1;
+    seed += (99139 * i2) << 16;
+
+    // number of tracks in cone
+    seed += 157 * photon.mipNhitCone();
+    seed += 13 * photon.nTrkHollowConeDR03();
+    seed += photon.nTrkSolidConeDR04();
+
+    return seed;
 }
 
 uint32_t DeterministicSeedProducer::createJetSeed(edm::Event& iEvent, const pat::Jet& jet)
 {
-    return 1;
+    uint32_t seed = 0;
+
+    // event number
+    seed += 4051 * iEvent.id().event();
+
+    // multiplicities
+    seed += 2081 * jet.chargedHadronMultiplicity();
+    seed += 971 * jet.neutralMultiplicity();
+    seed += (431 * jet.n60()) << 6;
+    seed += 3 * jet.photonMultiplicity();
+
+    return seed;
 }
 
 uint32_t DeterministicSeedProducer::createMETSeed(edm::Event& iEvent, const pat::MET& MET)
 {
-    return 1;
-}
+    uint32_t seed = 0;
 
+    // no appropriate integers available, but the event number should be fine here since
+    // we only have one MET object per event
+    seed += 7001 * iEvent.id().event();
+
+    return seed;
+}
 
 void DeterministicSeedProducer::createDebugHists(std::string& seedName)
 {
