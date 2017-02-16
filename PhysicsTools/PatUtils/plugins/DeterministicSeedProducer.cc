@@ -455,9 +455,13 @@ uint32_t DeterministicSeedProducer::createMETSeed(edm::Event& iEvent, const pat:
 {
     uint32_t seed = 0;
 
-    // no appropriate integers available, but the event number should be fine here since
-    // we only have one MET object per event
+    // event number
     seed += 7001 * iEvent.id().event();
+
+    // no appropriate integers available, use boolean flags
+    seed += int(MET.isCaloMET()) << 3;
+    seed += int(MET.isPFMET()) << 2;
+    seed += int(MET.isRecoMET()) << 1;
 
     return seed;
 }
