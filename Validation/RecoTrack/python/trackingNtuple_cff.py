@@ -12,9 +12,10 @@ from Validation.RecoTrack.trackingNtuple_cfi import *
 from Validation.RecoTrack.TrackValidation_cff import *
 from SimGeneral.TrackingAnalysis.trackingParticleNumberOfLayersProducer_cff import *
 import Validation.RecoTrack.TrackValidation_cff as _TrackValidation_cff
+import RecoTracker.IterativeTracking.ElectronSeeds_cff as _electron_cff
 
-_includeHits = True
-#_includeHits = False
+#_includeHits = True
+_includeHits = False
 
 _includeSeeds = True
 #_includeSeeds = False
@@ -52,19 +53,20 @@ def _filterForNtuple(lst):
             continue
         ret.append(item)
     return ret
-_seedProducers = _filterForNtuple(_TrackValidation_cff._seedProducers)
-_seedProducers_trackingPhase1 = _filterForNtuple(_TrackValidation_cff._seedProducers_trackingPhase1)
 
+# Build seed tracks from the GSF tracks seeds
+_seedProducers = ['electronMergedSeeds']
 (_seedSelectors, trackingNtupleSeedSelectors) = _TrackValidation_cff._addSeedToTrackProducers(_seedProducers, globals())
-(_seedSelectors_trackingPhase1, _trackingNtupleSeedSelectors_trackingPhase1) = _TrackValidation_cff._addSeedToTrackProducers(_seedProducers_trackingPhase1, globals())
-from Configuration.Eras.Modifier_phase1Pixel_cff import phase1Pixel
-phase1Pixel.toReplaceWith(trackingNtupleSeedSelectors, _trackingNtupleSeedSelectors_trackingPhase1)
-
 trackingNtuple.seedTracks = _seedSelectors
-from Configuration.Eras.Modifier_trackingPhase1_cff import trackingPhase1
-trackingPhase1.toModify(trackingNtuple, seedTracks = _seedSelectors_trackingPhase1)
+trackingNtuple.tracks = cms.untracked.InputTag('electronGsfTracks')
+
+# Matches to the original seeds defined in RecoTracker.IterativeTracking.ElectronSeeds_cff
+_seedProducersOriginal = _electron_cff._seedCollections_Phase1
+(_seedSelectorsOriginal, trackingNtupleSeedSelectorsOriginal) = _TrackValidation_cff._addSeedToTrackProducers(_seedProducersOriginal, globals())
+trackingNtuple.seedTracksOriginal = _seedSelectorsOriginal
 
 trackingNtupleSequence = cms.Sequence()
+
 # reproduce hits because they're not stored in RECO
 if _includeHits:
     trackingNtupleSequence += (
@@ -73,6 +75,7 @@ if _includeHits:
     )
 if _includeSeeds:
     trackingNtupleSequence += trackingNtupleSeedSelectors
+    trackingNtupleSequence += trackingNtupleSeedSelectorsOriginal
 
 trackingNtupleSequence += (
     # sim information
