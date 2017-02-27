@@ -19,6 +19,9 @@ calibratedPatElectrons = cms.EDProducer("CalibratedPatElectronProducerRun2",
                                         # set to True to get special "fake" smearing for synchronization. Use JUST in case of synchronization
                                         isSynchronization = cms.bool(False),
 
+                                        # set to a name of a userInt that will be used as the seed and changed per electron
+                                        seedUserInt = cms.string(""),
+
                                         correctionFile = cms.string(files[correctionType])
                                        )
 
