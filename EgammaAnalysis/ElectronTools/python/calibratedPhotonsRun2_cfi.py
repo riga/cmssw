@@ -15,7 +15,10 @@ calibratedPhotons = cms.EDProducer("CalibratedPhotonProducerRun2",
                                    # set to True to get special "fake" smearing for synchronization. Use JUST in case of synchronization
                                    isSynchronization = cms.bool(False),
 
-                                   correctionFile = cms.string(files[correctionType])
+                                   correctionFile = cms.string(files[correctionType]),
+                                   recHitCollectionEB = cms.InputTag('reducedEcalRecHitsEB'),
+                                   recHitCollectionEE = cms.InputTag('reducedEcalRecHitsEE')
+                                     
                                    )
 
 

@@ -22,7 +22,10 @@ calibratedPatElectrons = cms.EDProducer("CalibratedPatElectronProducerRun2",
                                         # set to a name of a userInt that will be used as the seed and changed per electron
                                         seedUserInt = cms.string(""),
 
-                                        correctionFile = cms.string(files[correctionType])
+                                        correctionFile = cms.string(files[correctionType]),
+                                        recHitCollectionEB = cms.InputTag('reducedEgamma:reducedEBRecHits'),
+                                        recHitCollectionEE = cms.InputTag('reducedEgamma:reducedEERecHits')
+                                        
                                        )
 
 

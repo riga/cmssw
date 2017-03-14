@@ -18,11 +18,6 @@ process.load('Configuration.StandardSequences.MagneticField_cff')
 process.load('Configuration.StandardSequences.EndOfProcess_cff')
 process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff')
 
-process.MessageLogger = cms.Service("MessageLogger",
-       destinations   = cms.untracked.vstring('cout'),
-       cout           = cms.untracked.PSet(threshold  = cms.untracked.string('ERROR'))
-                                    )
-
 process.maxEvents = cms.untracked.PSet(
     input = cms.untracked.int32(-1)
 )
