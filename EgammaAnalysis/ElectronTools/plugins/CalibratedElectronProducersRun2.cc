@@ -28,7 +28,8 @@ public:
   explicit CalibratedElectronProducerRun2T( const edm::ParameterSet & ) ;
   virtual ~CalibratedElectronProducerRun2T();
   virtual void produce( edm::Event &, const edm::EventSetup & ) override ;
-  
+  virtual void loopHook(T& ele);
+
 private:
   edm::EDGetTokenT<edm::View<T> > theElectronToken;
   std::vector<std::string>        theGBRForestName;
