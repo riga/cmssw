@@ -27,20 +27,20 @@ class ElectronEnergyCalibratorRun2
   /// Correct this electron.
   /// StreamID is needed when used with CMSSW Random Number Generator
   std::vector<float> calibrate(reco::GsfElectron &electron, unsigned int runNumber, 
-			       const EcalRecHitCollection* recHits, edm::StreamID const & id = edm::StreamID::invalidStreamID()) const ;
+			       const EcalRecHitCollection* recHits, edm::StreamID const & id = edm::StreamID::invalidStreamID(), int eventIsMC = -1) const ;
   
  protected:
   // whatever data will be needed
   EpCombinationToolSemi *epCombinationTool_;
-  bool isMC_, synchronization_;
+  bool isMC_;
+  bool synchronization_;
   TRandom *rng_;
   
   /// Return a number distributed as a unit gaussian, drawn from the private RNG if initPrivateRng was called,
   /// or from the CMSSW RandomNumberGenerator service
   /// If synchronization is set to true, it returns a fixed number (1.0)
   double gauss(edm::StreamID const& id) const ;
-  EnergyScaleCorrection_class _correctionRetriever;
-  const EcalRecHitCollection* _recHits;
+  EnergyScaleCorrection_class correctionRetriever_;
 };
 
 #endif

@@ -18,8 +18,7 @@ class PhotonEnergyCalibratorRun2
   PhotonEnergyCalibratorRun2() {}
   
   // further configuration will be added when we will learn how it will work
-  PhotonEnergyCalibratorRun2(bool isMC, bool synchronization, std::string correctionFile);
-  
+  PhotonEnergyCalibratorRun2(bool isMC, bool synchronization, std::string correctionFile);  
   ~PhotonEnergyCalibratorRun2() ;
   
   /// Initialize with a random number generator (if not done, it will use the CMSSW service)
@@ -29,11 +28,12 @@ class PhotonEnergyCalibratorRun2
   /// Correct this electron.
   /// StreamID is needed when used with CMSSW Random Number Generator
   std::vector<float> calibrate(reco::Photon &photon, unsigned int runNumber, 
-			       const EcalRecHitCollection* recHits, edm::StreamID const & id = edm::StreamID::invalidStreamID()) const ;
+			       const EcalRecHitCollection* recHits, edm::StreamID const & id = edm::StreamID::invalidStreamID(), int eventIsMC = -1) const ;
   
  protected:
   // whatever data will be needed
-  bool isMC_, synchronization_;
+  bool isMC_;
+  bool synchronization_;
   TRandom *rng_;
   std::vector<double> smearings_;
   std::vector<double> scales_;
@@ -42,7 +42,7 @@ class PhotonEnergyCalibratorRun2
   /// or from the CMSSW RandomNumberGenerator service
   /// If synchronization is set to true, it returns a fixed number (1.0)
   double gauss(edm::StreamID const& id) const ;
-  EnergyScaleCorrection_class _correctionRetriever;
+  EnergyScaleCorrection_class correctionRetriever_;
 
 };
 

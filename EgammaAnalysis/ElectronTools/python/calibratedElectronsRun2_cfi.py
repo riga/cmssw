@@ -15,6 +15,7 @@ calibratedElectrons = cms.EDProducer("CalibratedElectronProducerRun2",
                                      # data or MC corrections
                                      # if isMC is false, data corrections are applied
                                      isMC = cms.bool(False),
+                                     autoDataType = cms.bool(True),
     
                                      # set to True to get special "fake" smearing for synchronization. Use JUST in case of synchronization
                                      isSynchronization = cms.bool(False),
