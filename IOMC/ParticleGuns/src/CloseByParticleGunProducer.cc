@@ -31,11 +31,11 @@ CloseByParticleGunProducer::CloseByParticleGunProducer(const ParameterSet& pset)
 
   fEnMax = pgun_params.getParameter<double>("EnMax");
   fEnMin = pgun_params.getParameter<double>("EnMin");
-  fRMax = pgun_params.getParameter<double>("RMax");
-  fRMin = pgun_params.getParameter<double>("RMin");
+  fRhoMax = pgun_params.getParameter<double>("RhoMax");
+  fRhoMin = pgun_params.getParameter<double>("RhoMin");
   fZMax = pgun_params.getParameter<double>("ZMax");
   fZMin = pgun_params.getParameter<double>("ZMin");
-  fDelta = pgun_params.getParameter<double>("Delta");
+  fDeltaR = pgun_params.getParameter<double>("DeltaR");
   fPhiMin = pgun_params.getParameter<double>("MinPhi");
   fPhiMax = pgun_params.getParameter<double>("MaxPhi");
   fPointing = pgun_params.getParameter<bool>("Pointing");
@@ -68,7 +68,7 @@ void CloseByParticleGunProducer::produce(Event &e, const EventSetup& es)
    // loop over particles
    //
    int barcode = 1 ;
-   int numParticles = fRandomShoot ? CLHEP::RandFlat::shoot(engine, 1, fNParticles) : fNParticles;
+   int numParticles = fRandomShoot ? CLHEP::RandFlat::shoot(engine, 1, fNParticles + 1) : fNParticles;
    std::vector<int> particles;
 
    for(int i=0; i<numParticles; i++){
@@ -77,21 +77,36 @@ void CloseByParticleGunProducer::produce(Event &e, const EventSetup& es)
      }
 
    double phi = CLHEP::RandFlat::shoot(engine, fPhiMin, fPhiMax);
-   double fR = CLHEP::RandFlat::shoot(engine,fRMin,fRMax);
+   double fRho = CLHEP::RandFlat::shoot(engine,fRhoMin,fRhoMax);
    double fZ = CLHEP::RandFlat::shoot(engine,fZMin,fZMax);
    double tmpPhi = phi;
-   double tmpR = fR;
+   double tmpRho = fRho;
+   constexpr double pi = 3.14159265;
+
+   if (!fOverlapping)
+   {
+       fDeltaR = 1.5;
+   }
 
    for (unsigned int ip=0; ip<particles.size(); ++ip)
    {
-     if(fOverlapping)
-       {
-        fR = CLHEP::RandFlat::shoot(engine,tmpR-fDelta,tmpR+fDelta);
-        phi = CLHEP::RandFlat::shoot(engine, tmpPhi-fDelta/fR, tmpPhi+fDelta/fR);
-       }
-     else
-       phi += fDelta/fR;
-       
+    if (ip > 0) {
+      // split delta R randomly in phi and rho directions
+      double alpha = CLHEP::RandFlat::shoot(engine, 0., 2 * pi);
+      double deltaPhi = sin(alpha) * fDeltaR;
+      double deltaEta = cos(alpha) * fDeltaR;
+
+      // update phi
+      phi += deltaPhi;
+
+      // update rho
+      // TODO: document formula
+      double eta0 = - log(tan(0.5 * atan(tmpRho / fZ)));
+      double eta1 = eta0 + deltaEta;
+      double x = exp(-eta1);
+      fRho += -fZ * 2 * x / (x * x - 1);
+    }
+
      double fEn = CLHEP::RandFlat::shoot(engine,fEnMin,fEnMax);
      int PartID = particles[ip] ;
      const HepPDT::ParticleData *PData = fPDGTable->particle(HepPDT::ParticleID(abs(PartID))) ;
@@ -103,8 +118,8 @@ void CloseByParticleGunProducer::produce(Event &e, const EventSetup& es)
      double energy = fEn;
 
      // Compute Vertex Position
-     double x=fR*cos(phi);
-     double y=fR*sin(phi);
+     double x=fRho*cos(phi);
+     double y=fRho*sin(phi);
      constexpr double c= 2.99792458e+1; // cm/ns
      double timeOffset = sqrt(x*x + y*y + fZ*fZ)/c*ns*c_light;
      HepMC::GenVertex* Vtx = new HepMC::GenVertex(HepMC::FourVector(x*cm,y*cm,fZ*cm,timeOffset));
