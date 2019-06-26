@@ -35,11 +35,10 @@ CloseByParticleGunProducer::CloseByParticleGunProducer(const ParameterSet& pset)
   fRhoMin = pgun_params.getParameter<double>("RhoMin");
   fZMax = pgun_params.getParameter<double>("ZMax");
   fZMin = pgun_params.getParameter<double>("ZMin");
-  fDeltaR = pgun_params.getParameter<double>("DeltaR");
   fPhiMin = pgun_params.getParameter<double>("MinPhi");
   fPhiMax = pgun_params.getParameter<double>("MaxPhi");
+  fDeltaR = pgun_params.getParameter<double>("DeltaR");
   fPointing = pgun_params.getParameter<bool>("Pointing");
-  fOverlapping = pgun_params.getParameter<bool>("Overlapping");
   fRandomShoot = pgun_params.getParameter<bool>("RandomShoot");
   fNParticles = pgun_params.getParameter<int>("NParticles");
   fPartIDs = pgun_params.getParameter< vector<int> >("PartID");
@@ -77,57 +76,59 @@ void CloseByParticleGunProducer::produce(Event &e, const EventSetup& es)
      }
 
    double phi = CLHEP::RandFlat::shoot(engine, fPhiMin, fPhiMax);
-   double fRho = CLHEP::RandFlat::shoot(engine,fRhoMin,fRhoMax);
-   double fZ = CLHEP::RandFlat::shoot(engine,fZMin,fZMax);
-   double tmpPhi = phi;
-   double tmpRho = fRho;
-   constexpr double pi = 3.14159265;
-
-   if (!fOverlapping)
-   {
-       fDeltaR = 1.5;
-   }
+   double rho = CLHEP::RandFlat::shoot(engine, fRhoMin, fRhoMax);
+   double z = CLHEP::RandFlat::shoot(engine, fZMin, fZMax);
+   double eta = - log(tan(0.5 * atan(rho / z)));
+   double phi0 = phi;
+   double eta0 = eta;
 
    for (unsigned int ip=0; ip<particles.size(); ++ip)
    {
-    if (ip > 0) {
+    if (ip > 0)
+    {
+      // create a random deltaR up to fDeltaR
+      double deltaR = CLHEP::RandFlat::shoot(engine, 0., fDeltaR);
+
       // split delta R randomly in phi and rho directions
-      double alpha = CLHEP::RandFlat::shoot(engine, 0., 2 * pi);
-      double deltaPhi = sin(alpha) * fDeltaR;
-      double deltaEta = cos(alpha) * fDeltaR;
+      double alpha = CLHEP::RandFlat::shoot(engine, 0., 2. * pi);
+      double deltaPhi = sin(alpha) * deltaR;
+      double deltaEta = cos(alpha) * deltaR;
 
       // update phi
-      phi += deltaPhi;
+      phi = phi0 + deltaPhi;
 
       // update rho
-      // TODO: document formula
-      double eta0 = - log(tan(0.5 * atan(tmpRho / fZ)));
-      double eta1 = eta0 + deltaEta;
-      double x = exp(-eta1);
-      fRho += -fZ * 2 * x / (x * x - 1);
+      // the approach is to transorm a difference in eta to a difference in rho using:
+      // 1. tan(theta) = rho / z       <=> rho   = z * tan(theta)
+      // 2. eta = -log(tan(theta / 2)) <=> theta = 2 * atan(exp(-eta))
+      // 2. in 1.                       => rho   = z * tan(2 * atan(exp(-eta)))
+      // using tan(atan(2 * x)) = - 2 * x (x^2 - 1) leads to
+      //                                =>  rho = -2 * z * x / (x^2 - 1), with x = exp(-eta)
+      // for eta = eta0 + deltaEta, this allows for a simple definition x = exp(-(eta0 + deltaEta))
+      eta = eta0 + deltaEta;
+      double x = exp(-eta);
+      rho = -2 * z * x / (x * x - 1);
     }
 
-     double fEn = CLHEP::RandFlat::shoot(engine,fEnMin,fEnMax);
      int PartID = particles[ip] ;
      const HepPDT::ParticleData *PData = fPDGTable->particle(HepPDT::ParticleID(abs(PartID))) ;
-     double mass   = PData->mass().value() ;
-     double mom    = sqrt(fEn*fEn-mass*mass);
+     double energy = CLHEP::RandFlat::shoot(engine, fEnMin, fEnMax);
+     double mass   = PData->mass().value();
+     double mom    = sqrt(energy * energy - mass * mass);
      double px     = 0.;
      double py     = 0.;
      double pz     = mom;
-     double energy = fEn;
 
      // Compute Vertex Position
-     double x=fRho*cos(phi);
-     double y=fRho*sin(phi);
-     constexpr double c= 2.99792458e+1; // cm/ns
-     double timeOffset = sqrt(x*x + y*y + fZ*fZ)/c*ns*c_light;
-     HepMC::GenVertex* Vtx = new HepMC::GenVertex(HepMC::FourVector(x*cm,y*cm,fZ*cm,timeOffset));
+     double x = rho*cos(phi);
+     double y = rho*sin(phi);
+     double timeOffset = sqrt(x * x + y * y + z * z) * cm / c_light;
+     HepMC::GenVertex* Vtx = new HepMC::GenVertex(HepMC::FourVector(x * cm, y * cm, z * cm, timeOffset));
 
-     HepMC::FourVector p(px,py,pz,energy) ;
+     HepMC::FourVector p(px,py,pz,energy);
      // If we are requested to be pointing to (0,0,0), correct the momentum direction
      if (fPointing) {
-       math::XYZVector direction(x,y,fZ);
+       math::XYZVector direction(x,y,z);
        math::XYZVector momentum = direction.unit() * mom;
        p.setX(momentum.x());
        p.setY(momentum.y());

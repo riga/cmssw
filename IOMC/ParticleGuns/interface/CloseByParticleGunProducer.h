@@ -23,7 +23,6 @@ namespace edm
     double fEnMin,fEnMax,fRhoMin,fRhoMax,fZMin,fZMax,fDeltaR,fPhiMin,fPhiMax;
     int fNParticles;
     bool fPointing = false;
-    bool fOverlapping = false;
     bool fRandomShoot = false;
     std::vector<int> fPartIDs;
   };
