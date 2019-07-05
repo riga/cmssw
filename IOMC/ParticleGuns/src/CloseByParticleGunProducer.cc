@@ -123,7 +123,7 @@ void CloseByParticleGunProducer::produce(Event &e, const EventSetup& es)
      double x = rho*cos(phi);
      double y = rho*sin(phi);
      double timeOffset = sqrt(x * x + y * y + z * z) * cm / c_light;
-     HepMC::GenVertex* Vtx = new HepMC::GenVertex(HepMC::FourVector(x * cm, y * cm, z * cm, timeOffset));
+     HepMC::GenVertex* Vtx = new HepMC::GenVertex(HepMC::FourVector(x * cm, y * cm, z * cm, timeOffset * c_light));
 
      HepMC::FourVector p(px,py,pz,energy);
      // If we are requested to be pointing to (0,0,0), correct the momentum direction
