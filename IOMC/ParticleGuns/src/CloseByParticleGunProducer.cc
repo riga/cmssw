@@ -21,122 +21,152 @@
 using namespace edm;
 using namespace std;
 
-CloseByParticleGunProducer::CloseByParticleGunProducer(const ParameterSet& pset) : BaseFlatGunProducer(pset) {
-  ParameterSet defpset;
-  ParameterSet pgun_params = pset.getParameter<ParameterSet>("PGunParameters");
+CloseByParticleGunProducer::CloseByParticleGunProducer(const ParameterSet& pset) :
+   BaseFlatGunProducer(pset)
+{
+
+  ParameterSet defpset ;
+  ParameterSet pgun_params =
+    pset.getParameter<ParameterSet>("PGunParameters") ;
 
   fEnMax = pgun_params.getParameter<double>("EnMax");
   fEnMin = pgun_params.getParameter<double>("EnMin");
-  fRMax = pgun_params.getParameter<double>("RMax");
-  fRMin = pgun_params.getParameter<double>("RMin");
+  fRhoMax = pgun_params.getParameter<double>("RhoMax");
+  fRhoMin = pgun_params.getParameter<double>("RhoMin");
   fZMax = pgun_params.getParameter<double>("ZMax");
   fZMin = pgun_params.getParameter<double>("ZMin");
-  fDelta = pgun_params.getParameter<double>("Delta");
   fPhiMin = pgun_params.getParameter<double>("MinPhi");
   fPhiMax = pgun_params.getParameter<double>("MaxPhi");
+  fDeltaR = pgun_params.getParameter<double>("DeltaR");
   fPointing = pgun_params.getParameter<bool>("Pointing");
-  fOverlapping = pgun_params.getParameter<bool>("Overlapping");
   fRandomShoot = pgun_params.getParameter<bool>("RandomShoot");
   fNParticles = pgun_params.getParameter<int>("NParticles");
-  fPartIDs = pgun_params.getParameter<vector<int> >("PartID");
+  fPartIDs = pgun_params.getParameter< vector<int> >("PartID");
 
   produces<HepMCProduct>("unsmeared");
   produces<GenEventInfoProduct>();
+
 }
 
-CloseByParticleGunProducer::~CloseByParticleGunProducer() {
-  // no need to cleanup GenEvent memory - done in HepMCProduct
+CloseByParticleGunProducer::~CloseByParticleGunProducer()
+{
+   // no need to cleanup GenEvent memory - done in HepMCProduct
 }
 
-void CloseByParticleGunProducer::produce(Event& e, const EventSetup& es) {
-  edm::Service<edm::RandomNumberGenerator> rng;
-  CLHEP::HepRandomEngine* engine = &rng->getEngine(e.streamID());
+void CloseByParticleGunProducer::produce(Event &e, const EventSetup& es)
+{
+   edm::Service<edm::RandomNumberGenerator> rng;
+   CLHEP::HepRandomEngine* engine = &rng->getEngine(e.streamID());
 
-  if (fVerbosity > 0) {
-    LogDebug("CloseByParticleGunProducer") << " CloseByParticleGunProducer : Begin New Event Generation" << endl;
-  }
-  fEvt = new HepMC::GenEvent();
+   if ( fVerbosity > 0 )
+     {
+       LogDebug("CloseByParticleGunProducer") << " CloseByParticleGunProducer : Begin New Event Generation" << endl ;
+     }
+   fEvt = new HepMC::GenEvent() ;
 
-  // loop over particles
-  //
-  int barcode = 1;
-  int numParticles = fRandomShoot ? CLHEP::RandFlat::shoot(engine, 1, fNParticles) : fNParticles;
-  std::vector<int> particles;
+   // loop over particles
+   //
+   int barcode = 1 ;
+   int numParticles = fRandomShoot ? CLHEP::RandFlat::shoot(engine, 1, fNParticles + 1) : fNParticles;
+   std::vector<int> particles;
 
-  for (int i = 0; i < numParticles; i++) {
-    int partIdx = CLHEP::RandFlat::shoot(engine, 0, fPartIDs.size());
-    particles.push_back(fPartIDs[partIdx]);
-  }
+   for(int i=0; i<numParticles; i++){
+     int partIdx = CLHEP::RandFlat::shoot(engine, 0, fPartIDs.size());
+     particles.push_back(fPartIDs[partIdx]);
+     }
 
-  double phi = CLHEP::RandFlat::shoot(engine, fPhiMin, fPhiMax);
-  double fR = CLHEP::RandFlat::shoot(engine, fRMin, fRMax);
-  double fZ = CLHEP::RandFlat::shoot(engine, fZMin, fZMax);
-  double tmpPhi = phi;
-  double tmpR = fR;
+   double phi = CLHEP::RandFlat::shoot(engine, fPhiMin, fPhiMax);
+   double rho = CLHEP::RandFlat::shoot(engine, fRhoMin, fRhoMax);
+   double z = CLHEP::RandFlat::shoot(engine, fZMin, fZMax);
+   double eta = - log(tan(0.5 * atan(rho / z)));
+   double phi0 = phi;
+   double eta0 = eta;
 
-  for (unsigned int ip = 0; ip < particles.size(); ++ip) {
-    if (fOverlapping) {
-      fR = CLHEP::RandFlat::shoot(engine, tmpR - fDelta, tmpR + fDelta);
-      phi = CLHEP::RandFlat::shoot(engine, tmpPhi - fDelta / fR, tmpPhi + fDelta / fR);
-    } else
-      phi += fDelta / fR;
+   for (unsigned int ip=0; ip<particles.size(); ++ip)
+   {
+    if (ip > 0)
+    {
+      // create a random deltaR up to fDeltaR
+      double deltaR = CLHEP::RandFlat::shoot(engine, 0., fDeltaR);
 
-    double fEn = CLHEP::RandFlat::shoot(engine, fEnMin, fEnMax);
-    int PartID = particles[ip];
-    const HepPDT::ParticleData* PData = fPDGTable->particle(HepPDT::ParticleID(abs(PartID)));
-    double mass = PData->mass().value();
-    double mom = sqrt(fEn * fEn - mass * mass);
-    double px = 0.;
-    double py = 0.;
-    double pz = mom;
-    double energy = fEn;
+      // split delta R randomly in phi and rho directions
+      double alpha = CLHEP::RandFlat::shoot(engine, 0., 2. * pi);
+      double deltaPhi = sin(alpha) * deltaR;
+      double deltaEta = cos(alpha) * deltaR;
 
-    // Compute Vertex Position
-    double x = fR * cos(phi);
-    double y = fR * sin(phi);
-    constexpr double c = 2.99792458e+1;  // cm/ns
-    double timeOffset = sqrt(x * x + y * y + fZ * fZ) / c * ns * c_light;
-    HepMC::GenVertex* Vtx = new HepMC::GenVertex(HepMC::FourVector(x * cm, y * cm, fZ * cm, timeOffset));
+      // update phi
+      phi = phi0 + deltaPhi;
 
-    HepMC::FourVector p(px, py, pz, energy);
-    // If we are requested to be pointing to (0,0,0), correct the momentum direction
-    if (fPointing) {
-      math::XYZVector direction(x, y, fZ);
-      math::XYZVector momentum = direction.unit() * mom;
-      p.setX(momentum.x());
-      p.setY(momentum.y());
-      p.setZ(momentum.z());
+      // update rho
+      // the approach is to transorm a difference in eta to a difference in rho using:
+      // 1. tan(theta) = rho / z       <=> rho   = z * tan(theta)
+      // 2. eta = -log(tan(theta / 2)) <=> theta = 2 * atan(exp(-eta))
+      // 2. in 1.                       => rho   = z * tan(2 * atan(exp(-eta)))
+      // using tan(atan(2 * x)) = - 2 * x (x^2 - 1) leads to
+      //                                =>  rho = -2 * z * x / (x^2 - 1), with x = exp(-eta)
+      // for eta = eta0 + deltaEta, this allows for a simple definition x = exp(-(eta0 + deltaEta))
+      eta = eta0 + deltaEta;
+      double x = exp(-eta);
+      rho = -2 * z * x / (x * x - 1);
     }
-    HepMC::GenParticle* Part = new HepMC::GenParticle(p, PartID, 1);
-    Part->suggest_barcode(barcode);
-    barcode++;
 
-    Vtx->add_particle_out(Part);
+     int PartID = particles[ip] ;
+     const HepPDT::ParticleData *PData = fPDGTable->particle(HepPDT::ParticleID(abs(PartID))) ;
+     double energy = CLHEP::RandFlat::shoot(engine, fEnMin, fEnMax);
+     double mass   = PData->mass().value();
+     double mom    = sqrt(energy * energy - mass * mass);
+     double px     = 0.;
+     double py     = 0.;
+     double pz     = mom;
 
-    if (fVerbosity > 0) {
-      Vtx->print();
-      Part->print();
-    }
-    fEvt->add_vertex(Vtx);
-  }
+     // Compute Vertex Position
+     double x = rho*cos(phi);
+     double y = rho*sin(phi);
+     double timeOffset = sqrt(x * x + y * y + z * z) * cm / c_light;
+     HepMC::GenVertex* Vtx = new HepMC::GenVertex(HepMC::FourVector(x * cm, y * cm, z * cm, timeOffset * c_light));
 
-  fEvt->set_event_number(e.id().event());
-  fEvt->set_signal_process_id(20);
+     HepMC::FourVector p(px,py,pz,energy);
+     // If we are requested to be pointing to (0,0,0), correct the momentum direction
+     if (fPointing) {
+       math::XYZVector direction(x,y,z);
+       math::XYZVector momentum = direction.unit() * mom;
+       p.setX(momentum.x());
+       p.setY(momentum.y());
+       p.setZ(momentum.z());
+     }
+     HepMC::GenParticle* Part = new HepMC::GenParticle(p,PartID,1);
+     Part->suggest_barcode( barcode );
+     barcode++;
 
-  if (fVerbosity > 0) {
-    fEvt->print();
-  }
+     Vtx->add_particle_out(Part);
 
-  unique_ptr<HepMCProduct> BProduct(new HepMCProduct());
-  BProduct->addHepMCData(fEvt);
-  e.put(std::move(BProduct), "unsmeared");
+     if (fVerbosity > 0) {
+       Vtx->print();
+       Part->print();
+     }
+     fEvt->add_vertex(Vtx);
+   }
 
-  unique_ptr<GenEventInfoProduct> genEventInfo(new GenEventInfoProduct(fEvt));
-  e.put(std::move(genEventInfo));
 
-  if (fVerbosity > 0) {
-    LogDebug("CloseByParticleGunProducer") << " CloseByParticleGunProducer : Event Generation Done " << endl;
-  }
+   fEvt->set_event_number(e.id().event());
+   fEvt->set_signal_process_id(20);
 
-  particles.clear();
+   if ( fVerbosity > 0 )
+   {
+      fEvt->print();
+   }
+
+   unique_ptr<HepMCProduct> BProduct(new HepMCProduct());
+   BProduct->addHepMCData( fEvt );
+   e.put(std::move(BProduct), "unsmeared");
+
+   unique_ptr<GenEventInfoProduct> genEventInfo(new GenEventInfoProduct(fEvt));
+   e.put(std::move(genEventInfo));
+
+   if ( fVerbosity > 0 )
+     {
+       LogDebug("CloseByParticleGunProducer") << " CloseByParticleGunProducer : Event Generation Done " << endl;
+     }
+
+   particles.clear();
 }
