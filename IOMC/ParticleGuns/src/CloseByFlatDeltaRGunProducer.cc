@@ -26,7 +26,7 @@ CloseByFlatDeltaRGunProducer::CloseByFlatDeltaRGunProducer(const ParameterSet& p
 
   fPartIDs = gunParams.getParameter<vector<int> >("PartID");
   fNParticles = gunParams.getParameter<int>("NParticles");
-  fShootPartIDs = gunParams.getParameter<bool>("ShootPartIDs");
+  fExactShoot = gunParams.getParameter<bool>("ExactShoot");
   fRandomShoot = gunParams.getParameter<bool>("RandomShoot");
 
   fEnMax = gunParams.getParameter<double>("EnMax");
@@ -66,7 +66,7 @@ void CloseByFlatDeltaRGunProducer::produce(Event& event, const EventSetup& setup
 
   // determine the number of particles to shoot
   int n = 0;
-  if (fShootPartIDs) {
+  if (fExactShoot) {
     n = (int)fPartIDs.size();
   } else if (fRandomShoot) {
     n = CLHEP::RandFlat::shoot(engine, 1, fNParticles + 1);
@@ -110,7 +110,7 @@ void CloseByFlatDeltaRGunProducer::produce(Event& event, const EventSetup& setup
     HepMC::GenVertex* vtx = new HepMC::GenVertex(HepMC::FourVector(x * cm, y * cm, z * cm, timeOffset * c_light));
 
     // obtain kinematics
-    int id = fShootPartIDs ? fPartIDs[i] : CLHEP::RandFlat::shoot(engine, 0, fPartIDs.size());
+    int id = fExactShoot ? fPartIDs[i] : CLHEP::RandFlat::shoot(engine, 0, fPartIDs.size());
     const HepPDT::ParticleData* pData = fPDGTable->particle(HepPDT::ParticleID(abs(id)));
     double e = CLHEP::RandFlat::shoot(engine, fEnMin, fEnMax);
     double m = pData->mass().value();

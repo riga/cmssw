@@ -29,7 +29,7 @@ namespace edm {
     int fNParticles;
 
     // flag that denotes that exactly the particles defined by fPartIds should be shot, with that order and quantity
-    bool fShootPartIDs;
+    bool fExactShoot;
 
     // flag that denotes whether a random number of particles in the range [1, fNParticles] is shot
     bool fRandomShoot;
