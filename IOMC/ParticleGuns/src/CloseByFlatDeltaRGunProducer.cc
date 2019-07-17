@@ -110,7 +110,7 @@ void CloseByFlatDeltaRGunProducer::produce(Event& event, const EventSetup& setup
     HepMC::GenVertex* vtx = new HepMC::GenVertex(HepMC::FourVector(x * cm, y * cm, z * cm, timeOffset * c_light));
 
     // obtain kinematics
-    int id = fExactShoot ? fPartIDs[i] : CLHEP::RandFlat::shoot(engine, 0, fPartIDs.size());
+    int id = fPartIDs[fExactShoot ? i : CLHEP::RandFlat::shoot(engine, 0, fPartIDs.size())];
     const HepPDT::ParticleData* pData = fPDGTable->particle(HepPDT::ParticleID(abs(id)));
     double e = CLHEP::RandFlat::shoot(engine, fEnMin, fEnMax);
     double m = pData->mass().value();
