@@ -62,6 +62,9 @@ def TICL_iterations_withReco(process):
   )
 
   process.hgcalMultiClusters = hgcalMultiClusters
+
+  # TODO: add simcluster merging analyzer
+
   process.TICL_Task = cms.Task(
       process.TICLLayerTileProducer,
       process.FilteredLayerClustersMIP,
@@ -70,7 +73,9 @@ def TICL_iterations_withReco(process):
       process.FilteredLayerClusters,
       process.Tracksters,
       process.MultiClustersFromTracksters)
+
   process.schedule.associate(process.TICL_Task)
+
   return process
 
 def TICL_iterations(process):
