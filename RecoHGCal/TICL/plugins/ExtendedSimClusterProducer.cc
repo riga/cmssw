@@ -36,11 +36,17 @@ ExtendedSimClusterProducer::ExtendedSimClusterProducer(const edm::ParameterSet& 
 void ExtendedSimClusterProducer::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
   edm::ParameterSetDescription desc;
   desc.add<edm::InputTag>("simClusters", edm::InputTag("mix", "MergedCaloTruth"));
-  descriptions.add("ExtendedSimClusterProducer", desc);
+  descriptions.add("extendedSimClusterProducer", desc);
 }
 
 void ExtendedSimClusterProducer::produce(edm::Event& event, const edm::EventSetup& setup) {
   std::unique_ptr<ExtendedSimClusters> clusters = std::make_unique<ExtendedSimClusters>();
+  clusters->resize(1);
+
+  // create a dummy cluster
+  ExtendedSimCluster dummy;
+  dummy.showerRadius = 1.;
+  (*clusters)[0] = dummy;
 
   // TODO: logic
 

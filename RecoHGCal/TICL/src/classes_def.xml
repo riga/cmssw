@@ -4,5 +4,5 @@
     </class>
     <class name="std::vector<ticl::ExtendedSimCluster>" />
     <class name="edm::Wrapper<ticl::ExtendedSimCluster>" />
-    <class name="edm::Wrapper<std::vector<ticl::ExtendedSimCluster>>" />
+    <class name="edm::Wrapper<std::vector<ticl::ExtendedSimCluster> >" />
 </lcgdict>

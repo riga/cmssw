@@ -18,8 +18,6 @@ from RecoHGCal.TICL.multiClustersFromTrackstersProducer_cfi import multiClusters
 
 
 def TICL_iterations_withReco(process):
-  process.FEVTDEBUGHLTEventContent.outputCommands.extend(['keep *_MultiClustersFromTracksters*_*_*'])
-
   process.TICLLayerTileProducer = ticlLayerTileProducer.clone()
 
   process.FilteredLayerClustersMIP = filteredLayerClustersProducer.clone(
@@ -63,8 +61,13 @@ def TICL_iterations_withReco(process):
 
   process.hgcalMultiClusters = hgcalMultiClusters
 
-  process.extendedSimClusters = cms.EDProducer("ExtendedSimClusterProducer",
-  )
+  from RecoHGCal.TICL.extendedSimClusterProducer_cfi import extendedSimClusterProducer
+  process.extendedSimClusters = extendedSimClusterProducer.clone()
+
+  process.FEVTDEBUGHLTEventContent.outputCommands.extend([
+    'keep *_MultiClustersFromTracksters*_*_*',
+    'keep *_extendedSimClusters*_*_*',
+  ])
 
   process.TICL_Task = cms.Task(
     process.TICLLayerTileProducer,
