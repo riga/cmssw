@@ -40,11 +40,15 @@ void ExtendedSimClusterProducer::fillDescriptions(edm::ConfigurationDescriptions
 }
 
 void ExtendedSimClusterProducer::produce(edm::Event& event, const edm::EventSetup& setup) {
+  // get SimClusters
+  edm::Handle<std::vector<SimCluster>> scHandle;
+  event.getByToken(simClusterToken_, scHandle);
+
   std::unique_ptr<ExtendedSimClusters> clusters = std::make_unique<ExtendedSimClusters>();
   clusters->resize(1);
 
   // create a dummy cluster
-  ExtendedSimCluster dummy;
+  ExtendedSimCluster dummy(scHandle->at(0));
   dummy.showerRadius = 1.;
   (*clusters)[0] = dummy;
 

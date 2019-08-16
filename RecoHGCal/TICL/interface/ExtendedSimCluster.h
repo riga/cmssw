@@ -7,15 +7,11 @@
 
 namespace ticl {
 
-  class ExtendedSimCluster : public SimCluster {
+  class ExtendedSimCluster {
   public:
-    ExtendedSimCluster() : SimCluster() { resetExtensions(); }
+    ExtendedSimCluster() { resetExtensions(); }
 
-    ExtendedSimCluster(const SimTrack &simtrk) : SimCluster(simtrk) { resetExtensions(); }
-
-    ExtendedSimCluster(EncodedEventId eventID, uint32_t particleID) : SimCluster(eventID, particleID) {
-      resetExtensions();
-    }
+    ExtendedSimCluster(const SimCluster& sc) : simCluster(sc) { resetExtensions(); }
 
     ~ExtendedSimCluster() {}
 
@@ -25,6 +21,7 @@ namespace ticl {
       showerRadius = 0.;
     }
 
+    SimCluster simCluster;
     float axisPhi;
     float axisEta;
     float showerRadius;
