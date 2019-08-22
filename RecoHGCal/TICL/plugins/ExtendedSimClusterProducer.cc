@@ -59,6 +59,7 @@ ExtendedSimClusterProducer::ExtendedSimClusterProducer(const edm::ParameterSet& 
   produces<ExtendedSimClusters>();
   produces<std::map<DetId, float>>("recHitEta");
   produces<std::map<DetId, float>>("recHitPhi");
+  produces<std::map<DetId, float>>("recHitZ");
 }
 
 void ExtendedSimClusterProducer::beginRun(const edm::Run& run, const edm::EventSetup& setup) {
@@ -74,12 +75,14 @@ void ExtendedSimClusterProducer::produce(edm::Event& event, const edm::EventSetu
   event.getByToken(simClusterToken_, scHandle);
 
   std::unique_ptr<ExtendedSimClusters> clusters = std::make_unique<ExtendedSimClusters>();
-  clusters->resize(1);
+  clusters->resize(scHandle->size());
 
-  // create a dummy cluster
-  ExtendedSimCluster dummy(scHandle->at(0));
-  dummy.showerRadius = 1.;
-  (*clusters)[0] = dummy;
+  // create a dummy clusters
+  for (size_t i = 0; i < scHandle->size(); i++) {
+    ExtendedSimCluster dummy(scHandle->at(i));
+    dummy.showerRadius = 1.;
+    (*clusters)[i] = dummy;
+  }
 
   // TODO: logic
 
@@ -90,6 +93,7 @@ void ExtendedSimClusterProducer::fillRecHitData(edm::Event& event) {
   // fill RecHit eta and phi values
   std::unique_ptr<std::map<DetId, float>> recHitEtaMap = std::make_unique<std::map<DetId, float>>();
   std::unique_ptr<std::map<DetId, float>> recHitPhiMap = std::make_unique<std::map<DetId, float>>();
+  std::unique_ptr<std::map<DetId, float>> recHitZMap = std::make_unique<std::map<DetId, float>>();
   for (const edm::EDGetTokenT<HGCRecHitCollection>& recHitToken : recHitTokens_) {
     edm::Handle<HGCRecHitCollection> rhHandle;
     event.getByToken(recHitToken, rhHandle);
@@ -104,8 +108,10 @@ void ExtendedSimClusterProducer::fillRecHitData(edm::Event& event) {
 
       (*recHitEtaMap)[detId] = recHitTools_.getEta(position);
       (*recHitPhiMap)[detId] = recHitTools_.getPhi(position);
+      (*recHitZMap)[detId] = position.z();
     }
   }
   event.put(std::move(recHitEtaMap), "recHitEta");
   event.put(std::move(recHitPhiMap), "recHitPhi");
+  event.put(std::move(recHitZMap), "recHitZ");
 }
