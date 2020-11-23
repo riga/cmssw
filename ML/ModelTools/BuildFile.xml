@@ -1,0 +1,9 @@
+<use name="json"/>
+
+<use name="FWCore/Utilities"/>
+<use name="PhysicsTools/TensorFlow"/>
+<use name="PhysicsTools/ONNXRuntime"/>
+
+<export>
+    <lib name="1"/>
+</export>

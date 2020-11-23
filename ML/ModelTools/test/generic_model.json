@@ -1,0 +1,46 @@
+{
+  "syntax": "v1",
+  "description": [
+    "model and network description",
+    "and probably a link to a talk on indico"
+  ],
+  "inputs": [
+    {
+      "name": "input",
+      "resource": "long_tensor_name",
+      "type": "float",
+      "shape": [-1, 3],
+      "features": [
+        {
+          "name": "eta",
+          "default": -5
+        },
+        {
+          "name": "phi",
+          "default": -3.5
+        },
+        {
+          "name": "pt",
+          "default": -1,
+          "empty": [-1000, "nan"]
+        }
+      ]
+    }
+  ],
+  "outputs": [
+    {
+      "name": "output",
+      "resource": "output/another_long_tensor_name",
+      "type": "float",
+      "shape": [-1, 2],
+      "features": [
+        {
+          "name": "signal_prob"
+        },
+        {
+          "name": "background_prob"
+        }
+      ]
+    }
+  ]
+}

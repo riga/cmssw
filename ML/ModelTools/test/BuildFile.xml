@@ -1,0 +1,6 @@
+<bin name="TestMLExamples" file="testExamples.cc">
+    <use name="boost_filesystem"/>
+    <use name="cppunit"/>
+
+    <use name="ML/ModelTools"/>
+</bin>
