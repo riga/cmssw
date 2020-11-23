@@ -59,6 +59,7 @@ void TestExamples::testManualSetup() {
   output.addFeature("background_prob");
 
   // create a data structure and wrap it into a generic DataAccessor to fill it
+  // (we are using batch size 1 here, so no need for vector in vector)
   std::vector<float> values(3);
   float* data = &values[0];
   ml::DataAccessor<float> inputAccessor = input.createDataAccessor(data);
@@ -77,22 +78,22 @@ void TestExamples::testManualSetup() {
   // now, one typically runs the model inference using the values vector
   // to simulate this behavior here we assume that the inference returns another float vector
   // but, in fact, this is fully arbitrary as long as the data structure is contiguous in memory
-  std::vector<std::vector<float>> outValues = {{0.7, 0.3}};
-  float* outData = &outValues[0][0];
+  std::vector<float> outValues = {0.7, 0.3};
+  float* outData = &outValues[0];
 
   // read particular features
   ml::DataAccessor<float> outputAccessor = output.createDataAccessor(outData);
   std::cout << "signal prob.: " << outputAccessor.getValue("signal_prob") << std::endl;
   std::cout << "background prob.: " << outputAccessor.getValue("background_prob") << std::endl;
-  CPPUNIT_ASSERT_EQUAL(outValues[0][0], outputAccessor.getValue("signal_prob"));
-  CPPUNIT_ASSERT_EQUAL(outValues[0][1], outputAccessor.getValue("background_prob"));
+  CPPUNIT_ASSERT_EQUAL(outValues[0], outputAccessor.getValue("signal_prob"));
+  CPPUNIT_ASSERT_EQUAL(outValues[1], outputAccessor.getValue("background_prob"));
 }
 
 void TestExamples::testJsonLoading() {
   logHeader("JsonLoading");
 
   // this test reads a json file containing the description of a model that is identical to the one
-  // defined in testManualSetup does
+  // defined in testManualSetup
 
   // read it
   std::cout << "reading model from " << modelFileGeneric_ << std::endl;
@@ -139,20 +140,11 @@ void TestExamples::testMatrixAccessor() {
   // this test does exactly what testManualSetup does, but uses MatrixAccessor's
   // to simplify the data access (here, a "Matrix" is a vector of vectors as e.g. used by ONNX)
 
-  // create the model, inputs and outputs
-  ml::Model model("myModel");
-  auto& input = model.addInput<float>("modelInput", {-1, 3});
-  input.addFeature("eta", -5);
-  input.addFeature("phi", -3.5);
-  auto& ptFeature = input.addFeature("pt", -1);
-  ptFeature.addEmptyValue(-1000);
-  ptFeature.addEmptyValue(ml::nanf);
-  auto& output = model.addOutput<float>("modelInput", {-1, 2});
-  output.addFeature("signal_prob");
-  output.addFeature("background_prob");
+  // read the model
+  ml::Model model("myModel", modelFileGeneric_);
 
   // create a data accessor which does type and shape checks when passed data structures to wrap
-  auto inputAccessor = input.createDataAccessor<ml::MatrixAccessor>();
+  auto inputAccessor = model.getInput<float>("input").createDataAccessor<ml::MatrixAccessor>();
 
   // we could create a vector of float vectors of length 3 now (matching the input shape) and pass
   // it to the accessor via setData() (which would do shape checks), but we can also just let the
@@ -173,7 +165,7 @@ void TestExamples::testMatrixAccessor() {
   std::vector<std::vector<float>> outValues = {{0.7, 0.3}};
 
   // create an output accessor
-  auto outputAccessor = output.createDataAccessor<ml::MatrixAccessor>(outValues);
+  auto outputAccessor = model.getOutput<float>("output").createDataAccessor<ml::MatrixAccessor>(outValues);
 
   // read particular features
   std::cout << "signal prob.: " << outputAccessor.getValue("signal_prob") << std::endl;
@@ -188,20 +180,11 @@ void TestExamples::testTFTensorAccessor() {
   // this test does exactly what testManualSetup does, but uses TFTensorAccessor's
   // to simplify the access of data of a TF tensor
 
-  // create the model, inputs and outputs
-  ml::Model model("myModel");
-  auto& input = model.addInput<float>("modelInput", {-1, 3});
-  input.addFeature("eta", -5);
-  input.addFeature("phi", -3.5);
-  auto& ptFeature = input.addFeature("pt", -1);
-  ptFeature.addEmptyValue(-1000);
-  ptFeature.addEmptyValue(ml::nanf);
-  auto& output = model.addOutput<float>("modelInput", {-1, 2});
-  output.addFeature("signal_prob");
-  output.addFeature("background_prob");
+  // read the model
+  ml::Model model("myModel", modelFileGeneric_);
 
   // create a data accessor which does type and shape checks when passed data structures to wrap
-  auto inputAccessor = input.createDataAccessor<ml::TFTensorAccessor>();
+  auto inputAccessor = model.getInput<float>("input").createDataAccessor<ml::TFTensorAccessor>();
 
   // we could create a float tensor with shape {-1, 3} now (matching the input shape) and pass
   // it to the accessor via setData() (which would do shape and type checks), but we can also just
