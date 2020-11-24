@@ -19,12 +19,12 @@ namespace edm {
     class DataAccessor {
     public:
       DataAccessor(const FeatureContainer<T>& container)
-          : container_(container), data_(nullptr), batched_(container_.isBatched()) {
+          : container_(container), batched_(container_.isBatched()), data_(nullptr) {
         checkContainer();
       }
 
       DataAccessor(const FeatureContainer<T>& container, T* data)
-          : container_(container), data_(data), batched_(container_.isBatched()) {
+          : container_(container), batched_(container_.isBatched()), data_(data) {
         checkContainer();
       }
 
@@ -64,8 +64,8 @@ namespace edm {
 
     protected:
       const FeatureContainer<T>& container_;
-      T* data_;
       bool batched_;
+      T* data_;
 
       void assertData() const;
 
@@ -105,16 +105,15 @@ namespace edm {
 
     template <typename T>
     void DataAccessor<T>::resetValues(size_t batchSize) const {
-      // the strategy here is to loop only once over each features and set its default value
-      // batchSize times to the proper data pointer, so this number becomes 0 without batching
       assertData();
 
-      // get the proper batchSize value and the number of features to calculate offsets
+      // the strategy here is to loop only once over each feature and set its default value
+      // "batchSize" times to the proper data pointer, so this number becomes 0 without batching
       batchSize = isBatched() ? batchSize : 0;
       size_t nFeatures = container_.getNFeatures();
 
       // loop over features
-      for (const auto [_, feature] : container_.getFeatures()) {
+      for (const auto& [_, feature] : container_.getFeatures()) {
         // skip when there is no default at all
         if (!feature.hasDefaultValue()) {
           continue;
