@@ -32,6 +32,8 @@ namespace edm {
 
       Vector createVector(size_t batchSize = 1);
 
+      using DataAccessor<T>::setData;
+
       void setData(Vector& v);
 
       void setData(Vector& v, size_t i);

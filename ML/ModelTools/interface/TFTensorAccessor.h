@@ -33,6 +33,8 @@ namespace edm {
 
       tensorflow::Tensor createTensor(size_t batchSize = 1);
 
+      using DataAccessor<T>::setData;
+
       void setData(tensorflow::Tensor& t);
 
       void setData(tensorflow::Tensor& t, size_t i);

@@ -1,5 +1,5 @@
 /*
- * Generic model for ML purposes.
+ * Generic model description for ML purposes.
  * See the header file for documentation.
  */
 

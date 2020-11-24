@@ -1,5 +1,5 @@
 /*
- * Generic model for ML purposes.
+ * Generic model description for ML purposes.
  */
 
 #ifndef ML_MODELTOOLS_INTERFACE_MODEL_H_

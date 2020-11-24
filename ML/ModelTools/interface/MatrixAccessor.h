@@ -32,6 +32,8 @@ namespace edm {
 
       Matrix createMatrix(size_t batchSize = 1);
 
+      using DataAccessor<T>::setData;
+
       void setData(Matrix& matrix);
 
       void setData(Matrix& matrix, size_t i);
